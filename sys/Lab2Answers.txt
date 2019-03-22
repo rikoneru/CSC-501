@@ -1,0 +1,104 @@
+b2Answers 
+By mreddy2
+
+
+1. The priority inversion problem could cause that a higher-priority process needs to wait for the completion of a lower-priority process.
+
+(1)Priority inheritance is one approach to address this issue. Please give another approach and briefly describe its idea.
+
+To overcome this another approach for this would be priority ceiling where the same issue can be addressed.In this approach we basically maintain the resource with a priority value which is generally higher than any of the tasks/process's priority. Then this is used to raise the priorities of processes according to the need. 
+Now when a process requests for that resource and it is granted to the process(given it is  available to acquire). Then the process's priority us set to the resource priority which we already know that it is higher. 
+Therefore we now have the process with highest priority. But for the implementation of this protocol we would be needing a scheduler which supports dynamic priority scheduling. 
+
+One another approach is priority boosting approach which again runs with dynamic priority scheduling, basically the system maintains a dynamic priority apart from the base priority and this dynamic priority is lowered or increased, based on the sections the process is executing. 
+For example when a process receives any messages as input then the process handling these messages is boosted with the dynamic priority and executed. Before boosting we also see define a range based on the need say with a range of process base priorities 10-30 we boost the priority else if the process base priority is within a range of 30-60 we do not boost the priority. 
+Hence as we can see that by boosting the lower priority processes the priority inversion problem is addressed. 
+
+1)
+(2)
+
+Considering a scenario where A acquires 2 semaphores say sem1 and sem2 with Prio 30 of A
+Then B try to acquire sem 2 with Priority 40
+Then C try to acquire sum 1 with Priority 50 
+Both B and C wait in the queue and then After A release B executes and then C executes and waits for longer time in the wait queue. 
+Under Xinu we have the following output , I am printing the time inside the signal function since when it comes out we get the time it was inside the queue which is found as below:
+
+Under Xinu present Implementation 
+Test 1: test the basic priority inheritence with semaphore implementation
+
+ Start Reader A(30), then sleep 1s. 2 sems granted to Reader A  reader A: to acquire lock 1 and 2 
+ reader A: acquired lock
+
+ Start  Reader B(40), then sleep 1s. waits for A to release sem2  reader B: to acquire lock
+ reader B: acquired lock
+
+ Start  Reader C(50), then sleep 1s. waist for A to release sem1  reader C: to acquire lock
+ reader A: to release lock
+ reader C: acquired lock
+ SEM:  
+ The writer with priority 50 has been waiting in the queue for 200 reader B: to release lock
+ reader C: to release lock
+
+
+
+
+Here it waits for 200
+
+
+
+
+
+Test 3: Test under the Priority Inheritance Implementation
+-start reader A, then sleep 1s. reader A(prio 30) gets the lock
+  Writer A: to acquire lock l1 and l2 
+ Writer A: acquired lock, sleep 10s
+-start reader B, then sleep 1s. reader B(prio 40) gets the lock
+  Writer B: to acquire lock
+-start reader C, then sleep 1s. reader C (prio 50) gets the lock
+  Writer C: to acquire lock
+  Writer A: to release lock1 and lock 2 
+  The writer has waited for 100  Writer C: acquired lock, sleep 10s
+  Writer B: acquired lock, sleep 10s
+  Writer C: to release lock
+  Writer B: to release lock
+
+
+While we have under our new PA2 implementation we have the wait time less since priority get updated from the wait queue and makes it faster for the implementation.
+
+Therefore it solves our problem here of not stoping higher priority process in the queue
+
+
+
+
+
+
+2) 
+The pseudocode sample given to us shows us a scenario where we have a LOCK_READER which with do_update allows multiple readers to try_update. But after coming to  try_update, here the global semaphore allows only 10 concurrent readers into the buffer_add function below. 
+Then the Reader try to acquire a global semaphore which since having a count of 10 allows unto 10 readers. Now inside the buffer_add function there may be case when a reader while getting executed stops in the middle and then another reader comes then there is possibility of wrong updating of buff-> size and buff->Len
+
+For example lets consider a scenario where we have a Reader A who comes inside the buffer_add function and then executes till the line of code which states
+"memcpy (buf->buf + buf->len, txt, size);"
+So the Reader A runs till this point of time, therefore it doesn't further update the  buf->len value and leaves it to the old value. 
+
+Now if a reader B comes into the buffer_add function till the point 
+memcpy (buf->buf + buf->len, txt, size);
+Here inside it's arguments but->len is not the updated value but the value which was found when reader A came here, since it did not update it, this stays the same old value.
+And now when reader B executes this statements it overlaps with the text which was added by A causing data being corrupted. Now even if Reader A comes back after this and updates the buffer->Len value the data is still overwritten.
+
+So Reader A comes to write a word "exam" whose size is 4.
+Initial buf->len =0 
+After writing that is memcpy the data will be exam
+But doesn't update the len
+
+Now reader B comes to write a word "assignment"
+Finds the buffer->len =0(because not updated by A) so starts writing from that point itself and overwrites  	exam
+			assignment
+Exam is now overwritten and then the buf->len is updated, so as we can see the data added by A is lost.
+
+
+This scenario can be prevented by allowing exclusive writing access to a process. 
+This way the data is preserved and the such overwriting is prevented and this can be attained by creating writers_lock to update the data in global_buf.
+ 
+
+
+  
